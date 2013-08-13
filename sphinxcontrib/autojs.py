@@ -85,9 +85,9 @@ class JSClassmember(JSObject):
             signode += addnodes.desc_annotation(sig_prefix, sig_prefix)
         sig = sig.split(".")[-1]
         names = super(JSClassmember, self).handle_signature(sig, signode)
-        name_prefix = self.env.temp_data.get("js:class")
+        name_prefix = self.env.temp_data.get("object")
         if name_prefix:
-            return self.make_prefix(name_prefix) + names[0], names[1]
+            return self.make_prefix(name_prefix[0]) + names[0], names[1]
         else:
             return names
 
@@ -245,7 +245,7 @@ class JavaScriptDocument(object):
     def get_docstrings(self):
         matches = self._DOCSTRING_RE.finditer(self.source)
         if not matches:
-            raise ValueError("There is no any named docstring.")
+            raise ValueError("There is not any named docstring.")
         for match in matches:
             yield JavaScriptDocstring.from_match(match)
 
