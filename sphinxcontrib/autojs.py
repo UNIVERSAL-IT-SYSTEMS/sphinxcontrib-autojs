@@ -1,6 +1,7 @@
 import os
 import os.path
 import re
+import io
 from docutils import nodes
 from docutils.statemachine import ViewList
 from pygments.lexers import JavascriptLexer, LEXERS
@@ -231,9 +232,9 @@ class JavaScriptDocument(object):
         (?P<docsuffix> \*/)
     """, re.VERBOSE | re.MULTILINE | re.DOTALL)
 
-    def __init__(self, path):
-        with open(path) as f:
-            self.source = "".join(f.readlines())
+    def __init__(self, path, encoding="utf-8-sig"):
+        with io.open(path, encoding=encoding) as f:
+            self.source = f.read()
 
     def get_description(self):
         match = self._MODULE_DOCSTRING_RE.match(self.source)
@@ -257,18 +258,15 @@ class JavaScriptDocument(object):
 
     def auto_include_members(self, rst, options):
         members = options.get("members")
-        compare = self._make_comparer(options.get("member-order"))
-        docstrings = list(self.get_docstrings())
-        docstrings.sort(cmp=compare)
         if members is not None:
             exclude_members = options.get("exclude-members", [])
             is_member = self._make_member_checker(members, exclude_members)
+            compare = self._make_comparer(options.get("member-order"))
+            docstrings = list(self.get_docstrings())
+            docstrings.sort(cmp=compare)
             for doc in docstrings:
                 if is_member(doc):
                     rst.append(doc.to_rst(docstrings, is_member=is_member))
-        else:
-            for doc in docstrings:
-                rst.append(doc.to_rst(docstrings))
 
     def _make_member_checker(self, members, exclude_members):
         __members__ = members
@@ -338,12 +336,16 @@ class AutoJavaScript(Directive):
             self.add_line(line)
 
     def run(self):
+        config = self.state.document.settings.env.config
+        source_encoding = config['source_encoding']
         self.result = ViewList()
         path = self.arguments[0]
         filename = os.path.basename(path)
         node = nodes.section()
         node.document = self.state.document
-        self.add_lines(JavaScriptDocument(path).to_rst(self.options))
+        self.add_lines(
+            JavaScriptDocument(
+                path, encoding=source_encoding).to_rst(self.options))
         nested_parse_with_titles(self.state, self.result, node)
         return node.children
 
